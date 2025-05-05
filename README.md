@@ -1,7 +1,3 @@
-Here’s an updated version of your **README** to reflect the changes and tasks completed:
-
----
-
 # UserCTRL Pro - Project Overview
 
 ## Description
@@ -278,7 +274,3 @@ To use the UserCTRL Pro scripts, follow the steps below:
 * **Vanshita Sharma**: Core Bash Logic, Role Templates, User Operations (Add, Delete, Lock, Modify).
 * **Shreya**: CSV Handling & Bulk Operations.
 * **Arshdeep**: Audit Reports & Email Automation.
-
----
-
-This version includes all of the contributions and changes, including the bulk user operations and the role templates you worked on. Let me know if you need further adjustments!
