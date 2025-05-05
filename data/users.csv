@@ -1,0 +1,8 @@
+username,fullname,password,shell
+jdoe,John Doe,Pass@123,/bin/bash
+asmith,Alice Smith,Secret456,/bin/zsh
+,NoUsername,NoPass123,/bin/bash               # í´´ Missing username
+existinguser,Already Exists,SomePass@1,/bin/bash  # í´´ Already exists
+invalidshell,Broken Shell,BadPass@321,/bin/invalidshell  # í´´ Invalid shell
+emptyfields,,,                                 # í´´ All fields empty
+
