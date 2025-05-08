@@ -104,12 +104,6 @@ To get started with **UserCTRL Pro**, follow these steps:
 
 * **generate_audit.sh**: Creates detailed system audit reports
 * **send_report.sh**: Emails reports and archives them
-
-### Utility Scripts
-
-* **utils.sh**: Common functions used across scripts
-* **role_templates.sh**: Defines permissions for different roles
-
 ---
 
 ## GUI Interface
