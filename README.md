@@ -1,6 +1,3 @@
-I'll update your README file to include the latest improvements and changes to your UserCTRL Pro project:
-
-```markdown
 # UserCTRL Pro - Advanced Linux User Management System
 
 ## Description
