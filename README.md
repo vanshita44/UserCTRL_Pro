@@ -1,20 +1,24 @@
-# UserCTRL Pro - Project Overview
+I'll update your README file to include the latest improvements and changes to your UserCTRL Pro project:
+
+```markdown
+# UserCTRL Pro - Advanced Linux User Management System
 
 ## Description
 
-**UserCTRL Pro** is a shell script-based user management system that allows administrators to efficiently manage user accounts on a Linux system. It enables operations such as creating users, deleting users, modifying user details, locking accounts, and assigning specific roles (admin, student, guest). The system also features role-based access controls to ensure the right permissions are applied based on the user's role.
+**UserCTRL Pro** is a comprehensive Linux user management system that allows administrators to efficiently manage user accounts through both a command-line interface and a graphical user interface built with Tkinter. The system enables operations such as creating users, deleting users, modifying user details, locking accounts, and assigning specific roles (admin, student, guest) with appropriate permissions.
 
-This repository contains all the shell scripts necessary for performing user management tasks, as well as role templates that allow the assignment of different privileges to each user.
+This repository contains all the shell scripts necessary for performing user management tasks, role templates for permission assignment, and a Python-based GUI for easier interaction.
 
-Additionally, **UserCTRL Pro** includes system audit features for generating audit reports, emailing those reports, and archiving them for future reference.
+Additionally, **UserCTRL Pro** includes robust system audit features for generating comprehensive audit reports, emailing those reports to administrators, and archiving them for future reference.
 
 ---
 
 ## Table of Contents
 
 * [Project Setup](#project-setup)
-* [My Contributions](#my-contributions)
+* [Features](#features)
 * [Scripts Overview](#scripts-overview)
+* [GUI Interface](#gui-interface)
 * [How to Use](#how-to-use)
 * [Dependencies](#dependencies)
 * [Contributors](#contributors)
@@ -25,252 +29,156 @@ Additionally, **UserCTRL Pro** includes system audit features for generating aud
 
 To get started with **UserCTRL Pro**, follow these steps:
 
-1. **Clone the Repository**: First, clone the repository to your local machine:
-
-   ```bash
+1. **Clone the Repository**:
+   ```
    git clone https://github.com/vanshita44/UserCTRL_Pro.git
    ```
 
-2. **Navigate to the Project Directory**: Once the repository is cloned, navigate into the project folder:
-
-   ```bash
+2. **Navigate to the Project Directory**:
+   ```
    cd UserCTRL_Pro
    ```
 
-3. **Set Permissions (Optional)**: If required, ensure that the scripts have execute permissions:
-
-   ```bash
+3. **Set Permissions**:
+   ```
    chmod +x *.sh
    ```
 
-4. **Install Dependencies** (for email functionality):
-   If you plan to use the email automation feature, ensure you have `mailutils` (or an equivalent mail client) installed. Run:
-
-   ```bash
+4. **Install Dependencies**:
+   ```
    sudo apt update
-   sudo apt install mailutils
+   sudo apt install mailutils python3-tk
+   ```
+
+5. **Launch the Application**:
+   ```
+   # For GUI interface
+   python3 gui/main_gui.py
+   
+   # For command-line interface
+   bash ./scripts/script_name.sh
    ```
 
 ---
 
-## Contributions
+## Features
 
-As part of the **UserCTRL Pro** project, I was responsible for creating and managing the core Bash scripts that handle user operations, role-based templates, input validation, error handling, and system auditing.
+* **User Management**:
+  * Add users with role-based permissions
+  * Delete users with home directory backup option
+  * Lock/unlock user accounts with expiration options
+  * Modify user details (username, shell, home directory, groups)
+  * Bulk user creation from CSV files
 
-Here’s an overview of the tasks I handled:
+* **Role-Based Access Control**:
+  * Admin: Full system privileges (sudo access)
+  * Student: Limited privileges (students group)
+  * Guest: Minimal privileges (guests group)
 
-### 1. **Core Bash Logic & User Operations**
+* **System Auditing**:
+  * Generate comprehensive system reports
+  * Customizable report sections
+  * User activity monitoring
+  * Security checks
 
-I created the main shell scripts that perform the essential user management tasks on a Linux system. These include:
+* **Automation**:
+  * Email reports to administrators
+  * Archive reports with organized date structure
+  * Logging of all operations
 
-#### **add\_user.sh**
-
-* **Purpose**: Adds a new user to the system and assigns them a role (admin, student, guest).
-* **Role**: The role-based access control ensures that each user has specific permissions.
-
-  * Admins are given *sudo* access to perform administrative tasks.
-  * Students are added to the *students* group.
-  * Guests are added to the *guests* group.
-* **Functionality**:
-
-  * The script prompts the administrator for the *username* and *role* of the new user.
-  * It checks if the username is already in use.
-  * If not, the user is added using the `useradd` command.
-  * Then, the script assigns the user to the appropriate group based on their role using the `usermod` command.
-
-#### **delete\_user.sh**
-
-* **Purpose**: Deletes an existing user from the system.
-* **Functionality**:
-
-  * The script prompts for the username to be deleted.
-  * It checks if the user exists and then deletes them using the `userdel` command.
-
-#### **lock\_user.sh**
-
-* **Purpose**: Locks a user’s account, preventing them from logging in.
-* **Functionality**:
-
-  * The script prompts for the username to be locked.
-  * It uses the `passwd -l` command to lock the account.
-
-#### **modify\_user.sh**
-
-* **Purpose**: Modifies a user’s details (e.g., adding/removing roles, changing groups).
-* **Functionality**:
-
-  * The script prompts for the username and the modification action (e.g., adding/removing user from groups).
-  * It uses the `usermod` command to modify user settings.
-
----
-
-### 2. **Bulk User Creation from CSV**
-
-#### **bulk\_add.sh**
-
-* **Purpose**: Handles bulk user creation from a CSV file (containing usernames and roles).
-* **Functionality**:
-
-  * The script reads the `users.csv` file, which contains user details (username, role).
-  * It processes each line and adds users in bulk to the system based on the role.
-  * It handles edge cases such as duplicate usernames and logs errors to `error_log.txt` for failed entries.
-
----
-
-### 3. **Audit Reporting and Automation**
-
-#### **generate\_audit.sh**
-
-* **Purpose**: Generates a system audit report that includes key system metrics (e.g., uptime, memory usage, active processes, IP address, network connections).
-* **Functionality**:
-
-  * The script collects system data such as uptime, free memory, top processes by memory usage, IP address configuration, and network listening services.
-  * The report is saved with a timestamp to a file.
-  * The script calls `send_report.sh` to automatically email the report and archive it for future reference.
-
-#### **send\_report.sh**
-
-* **Purpose**: Sends the generated audit report via email and archives it for record-keeping.
-* **Functionality**:
-
-  * This script emails the generated audit report to the specified recipient using the system's mail utility (like `mail` or `sendmail`).
-  * The report is archived in a designated folder for record-keeping.
-
----
-
-### 4. **Role Templates**
-
-I created role templates for users to define what groups they should belong to. This makes it easier to assign roles with predefined permissions:
-
-* **Admin**: Full privileges, able to perform administrative tasks (added to the **sudo** group).
-* **Student**: Limited privileges, part of the **students** group.
-* **Guest**: Very limited privileges, part of the **guests** group.
-
----
-
-### 5. **System Commands**
-
-Throughout the scripts, I utilized several important Linux commands to manage users and generate audit reports:
-
-* **useradd**: Used to create a new user.
-* **usermod**: Used to modify an existing user (e.g., add the user to specific groups based on their role).
-* **userdel**: Used to delete a user from the system.
-* **passwd -l**: Used to lock a user account.
-* **uptime, free, ps, ip, ss**: Used in the audit report to gather system statistics.
+* **Graphical User Interface**:
+  * Tkinter-based GUI for easier interaction
+  * Tabbed interface for different operations
+  * Form validation and error handling
 
 ---
 
 ## Scripts Overview
 
-### 1. **add\_user.sh**
+### User Management Scripts
 
-* Adds a user and assigns a role.
-* Takes *username* and *role* as input.
-* Roles: *admin, student, guest*.
-* Assigns the user to the appropriate Linux group based on their role.
+* **add_user.sh**: Creates users with password security and role assignment
+* **delete_user.sh**: Removes users with home directory backup
+* **lock_user.sh**: Locks/unlocks accounts with reason tracking
+* **modify_user.sh**: Comprehensive user modification options
+* **bulk_add.sh**: Processes CSV files for bulk user creation
 
-### 2. **delete\_user.sh**
+### Audit and Reporting Scripts
 
-* Deletes a user from the system.
-* Takes *username* as input.
-* Ensures the user exists before deleting.
+* **generate_audit.sh**: Creates detailed system audit reports
+* **send_report.sh**: Emails reports and archives them
 
-### 3. **lock\_user.sh**
+### Utility Scripts
 
-* Locks a user account to prevent login.
-* Takes *username* as input.
+* **utils.sh**: Common functions used across scripts
+* **role_templates.sh**: Defines permissions for different roles
 
-### 4. **modify\_user.sh**
+---
 
-* Modifies a user's group memberships.
-* Takes *username* and *modification action* as input.
-* Allows adding/removing users from groups.
+## GUI Interface
 
-### 5. **Bulk User Operations**
+The Tkinter-based GUI provides an intuitive interface for all operations:
 
-* **bulk\_add.sh**: Adds multiple users from a CSV file, logs errors, and handles edge cases.
+* **User Management Tab**: Add, delete, lock/unlock, and modify users
+* **Audit & Reports Tab**: Generate and send audit reports
+* **Bulk Operations Tab**: Upload CSV files for bulk user creation
 
-### 6. **Audit Scripts**
-
-* **generate\_audit.sh**: Generates and saves a system audit report.
-* **send\_report.sh**: Sends the audit report via email and archives it.
+The GUI internally calls the bash scripts to perform the actual system operations, providing a user-friendly front-end while maintaining the robust back-end functionality.
 
 ---
 
 ## How to Use
 
-To use the UserCTRL Pro scripts, follow the steps below:
+### Command Line Interface
 
-1. **Clone the Repository**:
-   Clone this repository to your local machine:
+Run individual scripts directly:
 
-   ```bash
-   git clone https://github.com/vanshita44/UserCTRL_Pro.git
-   cd UserCTRL_Pro
-   ```
+```
+# Add a user
+bash scripts/add_user.sh
 
-2. **Make the Scripts Executable** (if required):
+# Delete a user
+bash scripts/delete_user.sh
 
-   ```bash
-   chmod +x *.sh
-   ```
+# Lock a user account
+bash scripts/lock_user.sh
 
-3. **Install Dependencies** (for email functionality):
-   Install **mailutils** or another mail client:
+# Modify a user
+bash scripts/modify_user.sh
 
-   ```bash
-   sudo apt update
-   sudo apt install mailutils
-   ```
+# Generate audit report
+bash scripts/generate_audit.sh
 
-4. **Run the Scripts**:
+# Send report via email
+bash scripts/send_report.sh recipient@example.com report_file.txt
+```
 
-   * To add a user:
+### Graphical Interface
 
-     ```bash
-     bash add_user.sh
-     ```
+Launch the GUI application:
 
-   * To delete a user:
+```
+python3 gui/main_gui.py
+```
 
-     ```bash
-     bash delete_user.sh
-     ```
-
-   * To lock a user account:
-
-     ```bash
-     bash lock_user.sh
-     ```
-
-   * To modify a user:
-
-     ```bash
-     bash modify_user.sh
-     ```
-
-   * To generate and email the system audit report (automatically archived):
-
-     ```bash
-     bash generate_audit.sh
-     ```
-
-5. **Follow the Prompts**:
-   Each script will prompt you to input a username and, in some cases, a role (for `add_user.sh`). Follow the prompts to execute the desired action.
+Then use the intuitive interface to perform all operations.
 
 ---
 
 ## Dependencies
 
-* **mailutils**: Required for sending email with audit reports.
-* **ps, free, uptime, ip, ss**: Required for generating system audit reports.
-* **chmod +x**: Ensure all scripts have execute permissions.
+* **Bash**: Core scripting language
+* **Python 3**: For the GUI interface
+* **Tkinter**: Python library for GUI development
+* **mailutils**: For email functionality
+* **System commands**: useradd, usermod, userdel, passwd, etc.
 
 ---
 
 ## Contributors
 
-* **Armaannpreet**: GUI Integration & Final Integration (in charge of connecting the bash logic to the GUI).
-* **Vanshita Sharma**: Core Bash Logic, Role Templates, User Operations (Add, Delete, Lock, Modify).
-* **Shreya**: CSV Handling & Bulk Operations.
-* **Arshdeep**: Audit Reports & Email Automation.
+* **Armaannpreet**: GUI Integration & Final Integration
+* **Vanshita Sharma**: Core Bash Logic, Role Templates, User Operations
+* **Shreya**: CSV Handling & Bulk Operations
+* **Arshdeep**: Audit Reports & Email Automation
+```
