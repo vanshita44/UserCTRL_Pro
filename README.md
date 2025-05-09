@@ -1,7 +1,3 @@
-Great to hear everything is working now! Here's an improved and more professional version of your `README.md` for **UserCTRL Pro**. I've enhanced the structure, improved grammar, and added formatting for clarity and readability.
-
----
-
 
 # 🛡️ UserCTRL Pro - Advanced Linux User Management System
 
@@ -61,36 +57,30 @@ Follow these steps to get started with UserCTRL Pro:
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/vanshita44/UserCTRL_Pro.git
-````
+   ```
 
 2. **Navigate to the Project Directory**:
-
    ```bash
    cd UserCTRL_Pro
    ```
 
 3. **Set Executable Permissions for Scripts**:
-
    ```bash
    chmod +x scripts/*.sh
    ```
 
 4. **Install Required Packages**:
-
    ```bash
    sudo apt update
    sudo apt install mailutils python3-tk
    ```
 
 5. **Launch the Application**:
-
-   * **For GUI**:
-
+   - **For GUI**:
      ```bash
      sudo python3 gui/main_gui.py
      ```
-   * **For CLI**:
-
+   - **For CLI**:
      ```bash
      bash scripts/script_name.sh
      ```
@@ -100,17 +90,15 @@ Follow these steps to get started with UserCTRL Pro:
 ## 🧩 Scripts Overview
 
 ### 🔧 User Management
-
-* `add_user.sh` – Add a user with password and role setup
-* `delete_user.sh` – Delete a user and optionally back up their home directory
-* `modify_user.sh` – Modify user attributes
-* `lock_user.sh` – Lock or unlock user accounts
-* `bulk_add.sh` – Bulk user creation from a CSV file
+- `add_user.sh` – Add a user with password and role setup
+- `delete_user.sh` – Delete a user and optionally back up their home directory
+- `modify_user.sh` – Modify user attributes
+- `lock_user.sh` – Lock or unlock user accounts
+- `bulk_add.sh` – Bulk user creation from a CSV file
 
 ### 📝 Auditing & Reporting
-
-* `generate_audit.sh` – Generate system audit logs
-* `send_report.sh` – Email and archive audit reports
+- `generate_audit.sh` – Generate system audit logs
+- `send_report.sh` – Email and archive audit reports
 
 ---
 
@@ -118,9 +106,9 @@ Follow these steps to get started with UserCTRL Pro:
 
 The GUI provides an intuitive interface, featuring:
 
-* **User Management Tab**: Add, delete, lock/unlock, and modify users
-* **Audit & Reports Tab**: Generate and email reports
-* **Bulk Operations Tab**: Upload CSV files for mass user creation
+- **User Management Tab**: Add, delete, lock/unlock, and modify users
+- **Audit & Reports Tab**: Generate and email reports
+- **Bulk Operations Tab**: Upload CSV files for mass user creation
 
 Each GUI operation internally executes its respective shell script.
 
@@ -155,21 +143,23 @@ Navigate through tabs to manage users or generate reports.
 
 ## 📦 Dependencies
 
-* **Bash** – For scripting core logic
-* **Python 3** – GUI backend
-* **Tkinter** – Python library for GUI
-* **mailutils** – For sending email reports
-* **System tools** – `useradd`, `usermod`, `userdel`, `passwd`, etc.
+- **Bash** – For scripting core logic
+- **Python 3** – GUI backend
+- **Tkinter** – Python library for GUI
+- **mailutils** – For sending email reports
+- **System tools** – `useradd`, `usermod`, `userdel`, `passwd`, etc.
 
 ---
 
 ## 👨‍💻 Contributors
 
-| Name                | Role                                   |
-| ------------------- | -------------------------------------- |
-| **Armaanpreet**     | GUI Development & Final Integration    |
-| **Vanshita Sharma** | Core Shell Scripts & Role Architecture |
-| **Shreya**          | Bulk CSV User Handling                 |
-| **Arshdeep**        | Audit Logging & Email Automation       |
+| Name            | Role                                      |
+|-----------------|-------------------------------------------|
+| **Armaanpreet** | GUI Development & Final Integration       |
+| **Vanshita Sharma** | Core Shell Scripts & Role Architecture   |
+| **Shreya**      | Bulk CSV User Handling                    |
+| **Arshdeep**    | Audit Logging & Email Automation          |
 
 ---
+
+> 🚀 *UserCTRL Pro – Streamlining Linux user management like a pro!*
