@@ -1,121 +1,103 @@
 #!/bin/bash
 
-# Define log file
-LOG_FILE="../logs/user_log.txt"
+# lock_user.sh - Script to lock or unlock a user account
+# This script is designed to work with the UserCTRL Pro GUI
 
-# Ensure log directory exists
-mkdir -p $(dirname "$LOG_FILE")
+# Set up logging
+LOG_DIR="../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/user_management_$(date +%Y%m%d).log"
 
 # Function to log messages
 log_message() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> "$LOG_FILE"
 }
 
-# Display usage information
-show_usage() {
-    echo "Usage: $0 [options]"
-    echo "Options:"
-    echo "  -h, --help                 Show this help message"
-    echo "  -u, --unlock               Unlock user instead of locking"
-    echo "  -e, --expire DAYS          Set account expiration (days from today)"
-    echo "  -r, --reason \"REASON\"      Specify reason for locking/unlocking"
-}
+log_message "Starting lock_user.sh script"
+
+# Default values
+UNLOCK=false
+REASON=""
+EXPIRE_DAYS=0
 
 # Parse command line arguments
-UNLOCK=false
-EXPIRE_DAYS=""
-REASON=""
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -h|--help)
-            show_usage
-            exit 0
-            ;;
-        -u|--unlock)
+while getopts "ur:e:" opt; do
+    case $opt in
+        u)
             UNLOCK=true
-            shift
             ;;
-        -e|--expire)
-            EXPIRE_DAYS="$2"
-            shift 2
+        r)
+            REASON="$OPTARG"
             ;;
-        -r|--reason)
-            REASON="$2"
-            shift 2
+        e)
+            EXPIRE_DAYS="$OPTARG"
             ;;
-        *)
-            echo "Unknown option: $1"
-            show_usage
+        \?)
+            echo "Invalid option: -$OPTARG"
             exit 1
             ;;
     esac
 done
 
-# Prompt for username
-read -p "Enter username to $([ "$UNLOCK" = true ] && echo "unlock" || echo "lock"): " username
+# Read username from stdin
+read -r username
+read -r reason_input
 
-# Check if username is empty
+# Use reason from command line or stdin
+if [ -z "$REASON" ] && [ -n "$reason_input" ]; then
+    REASON="$reason_input"
+fi
+
+# Validate inputs
 if [ -z "$username" ]; then
-    echo "Username is required!"
-    log_message "ERROR: Empty username provided for $([ "$UNLOCK" = true ] && echo "unlock" || echo "lock") operation"
+    echo "Error: Username is required"
+    log_message "Error: Username is required"
     exit 1
 fi
 
 # Check if user exists
 if ! id "$username" &>/dev/null; then
-    echo "User does not exist!"
-    log_message "ERROR: Attempted to $([ "$UNLOCK" = true ] && echo "unlock" || echo "lock") non-existent user: $username"
+    echo "Error: User $username does not exist"
+    log_message "Error: User $username does not exist"
     exit 1
-fi
-
-# If no reason provided, prompt for it
-if [ -z "$REASON" ]; then
-    read -p "Enter reason for $([ "$UNLOCK" = true ] && echo "unlocking" || echo "locking") (optional): " REASON
 fi
 
 # Lock or unlock the user account
 if [ "$UNLOCK" = true ]; then
     # Unlock user
-    sudo usermod -U "$username"
-    if [ $? -eq 0 ]; then
-        echo "User $username has been unlocked successfully."
-        log_message "SUCCESS: User $username unlocked. Reason: ${REASON:-No reason provided}"
-    else
-        echo "Failed to unlock user $username."
-        log_message "ERROR: Failed to unlock user $username"
+    usermod -U "$username"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to unlock user $username"
+        log_message "Error: Failed to unlock user $username"
         exit 1
     fi
+    
+    # Remove expiry if any
+    usermod --expiredate "" "$username"
+    
+    log_message "User $username unlocked successfully"
+    echo "User $username unlocked successfully"
 else
     # Lock user
-    sudo usermod -L "$username"
-    if [ $? -eq 0 ]; then
-        echo "User $username has been locked successfully."
-        log_message "SUCCESS: User $username locked. Reason: ${REASON:-No reason provided}"
-    else
-        echo "Failed to lock user $username."
-        log_message "ERROR: Failed to lock user $username"
+    usermod -L "$username"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to lock user $username"
+        log_message "Error: Failed to lock user $username"
         exit 1
     fi
-fi
-
-# Set expiration date if specified
-if [ -n "$EXPIRE_DAYS" ]; then
-    # Calculate expiration date
-    if [ "$EXPIRE_DAYS" = "1" ]; then
-        # Special case: completely disable account (Jan 1, 1970)
-        sudo usermod -e 1 "$username"
-        echo "User account completely disabled (expiration set to epoch)."
-        log_message "INFO: User $username account completely disabled with epoch expiration"
-    else
-        # Regular expiration date calculation
+    
+    # Set account expiry if specified
+    if [ "$EXPIRE_DAYS" -gt 0 ]; then
+        # Calculate expiry date
         EXPIRE_DATE=$(date -d "+$EXPIRE_DAYS days" +%Y-%m-%d)
-        sudo usermod -e "$EXPIRE_DATE" "$username"
-        echo "Account expiration set to $EXPIRE_DATE."
-        log_message "INFO: User $username expiration set to $EXPIRE_DATE"
+        usermod --expiredate "$EXPIRE_DATE" "$username"
+        
+        log_message "User $username locked until $EXPIRE_DATE. Reason: $REASON"
+        echo "User $username locked successfully until $EXPIRE_DATE"
+    else
+        log_message "User $username locked. Reason: $REASON"
+        echo "User $username locked successfully"
     fi
 fi
 
-# Display account status
-echo "Current account status:"
-sudo passwd -S "$username"
+exit 0

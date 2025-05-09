@@ -1,274 +1,199 @@
 #!/bin/bash
 
-# Script to generate a comprehensive system audit report
+# generate_audit.sh - Script to generate system audit reports
+# This script is designed to work with the UserCTRL Pro GUI
 
-# Default settings
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-REPORT_FILE="audit_report_$TIMESTAMP.txt"
-ARCHIVE_DIR="./archive"
-
-# Default sections to include (all enabled by default)
-INCLUDE_SYSTEM=true
-INCLUDE_MEMORY=true
-INCLUDE_NETWORK=true
-INCLUDE_USERS=true
-INCLUDE_SECURITY=true
-
-# Function to display usage information
-show_usage() {
-  echo "Usage: $0 [options]"
-  echo "Options:"
-  echo "  -h, --help                Show this help message"
-  echo "  -o, --output FILE         Specify output file (default: audit_report_TIMESTAMP.txt)"
-  echo "  -e, --exclude SECTIONS    Exclude specific sections (comma-separated)"
-  echo "                            Valid sections: system,memory,network,users,security"
-  echo "  -i, --include SECTIONS    Include only specific sections (comma-separated)"
-  echo "  -a, --archive DIR         Specify archive directory (default: ./archive)"
-}
-
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    -o|--output)
-      REPORT_FILE="$2"
-      shift 2
-      ;;
-    -e|--exclude)
-      # Parse excluded sections
-      IFS=',' read -ra EXCLUDE_SECTIONS <<< "$2"
-      for section in "${EXCLUDE_SECTIONS[@]}"; do
-        case "$section" in
-          system) INCLUDE_SYSTEM=false ;;
-          memory) INCLUDE_MEMORY=false ;;
-          network) INCLUDE_NETWORK=false ;;
-          users) INCLUDE_USERS=false ;;
-          security) INCLUDE_SECURITY=false ;;
-          *) echo "Warning: Unknown section '$section'" ;;
-        esac
-      done
-      shift 2
-      ;;
-    -i|--include)
-      # First disable all sections
-      INCLUDE_SYSTEM=false
-      INCLUDE_MEMORY=false
-      INCLUDE_NETWORK=false
-      INCLUDE_USERS=false
-      INCLUDE_SECURITY=false
-      
-      # Then enable only specified sections
-      IFS=',' read -ra INCLUDE_SECTIONS <<< "$2"
-      for section in "${INCLUDE_SECTIONS[@]}"; do
-        case "$section" in
-          system) INCLUDE_SYSTEM=true ;;
-          memory) INCLUDE_MEMORY=true ;;
-          network) INCLUDE_NETWORK=true ;;
-          users) INCLUDE_USERS=true ;;
-          security) INCLUDE_SECURITY=true ;;
-          *) echo "Warning: Unknown section '$section'" ;;
-        esac
-      done
-      shift 2
-      ;;
-    -a|--archive)
-      ARCHIVE_DIR="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown option: $1"
-      show_usage
-      exit 1
-      ;;
-  esac
-done
+# Set up logging
+LOG_DIR="../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/audit_$(date +%Y%m%d).log"
 
 # Create archive directory if it doesn't exist
+ARCHIVE_DIR="./archive/reports"
 mkdir -p "$ARCHIVE_DIR"
 
-# Function to check command availability
-check_command() {
-  command -v "$1" &> /dev/null || echo "$1 command not found"
+# Function to log messages
+log_message() {
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> "$LOG_FILE"
 }
 
-# Function to generate system information section
-generate_system_info() {
-  echo "===== SYSTEM INFORMATION ====="
-  echo "Generated on: $(date)"
-  echo "Hostname: $(hostname)"
-  echo ""
-  echo "---- System Uptime ----"
-  check_command uptime && uptime || echo "uptime command not found"
-  echo ""
-  echo "---- OS Information ----"
-  if [ -f /etc/os-release ]; then
-    cat /etc/os-release | grep -E "^(NAME|VERSION)="
-  else
-    echo "OS information not available"
-  fi
-  echo ""
-  echo "---- Kernel Information ----"
-  check_command uname && uname -a || echo "uname command not found"
-  echo ""
-  echo "---- CPU Information ----"
-  if [ -f /proc/cpuinfo ]; then
-    grep -m1 "model name" /proc/cpuinfo
-    grep -c "processor" /proc/cpuinfo | awk '{print "CPU Cores: " $1}'
-  else
-    echo "CPU information not available"
-  fi
-  echo ""
-  echo "---- Disk Usage ----"
-  check_command df && df -h || echo "df command not found"
-  echo ""
+log_message "Starting generate_audit.sh script"
+
+# Default values
+INCLUDE_SECTIONS="system,memory,network,users,security"
+OUTPUT_FILE="audit_report_$(date +%Y%m%d_%H%M%S).txt"
+
+# Parse command line arguments
+while getopts "i:o:" opt; do
+    case $opt in
+        i)
+            INCLUDE_SECTIONS="$OPTARG"
+            ;;
+        o)
+            OUTPUT_FILE="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG"
+            exit 1
+            ;;
+    esac
+done
+
+# Convert include sections to array
+IFS=',' read -ra SECTIONS <<< "$INCLUDE_SECTIONS"
+
+# Start generating the report
+echo "Generating audit report..."
+log_message "Generating audit report with sections: $INCLUDE_SECTIONS"
+
+# Create report header
+cat > "$OUTPUT_FILE" << EOF
+=======================================================
+           SYSTEM AUDIT REPORT
+=======================================================
+Date: $(date +"%Y-%m-%d %H:%M:%S")
+Hostname: $(hostname)
+=======================================================
+
+EOF
+
+# Function to add a section header
+add_section_header() {
+    echo -e "\n-------------------------------------------------------" >> "$OUTPUT_FILE"
+    echo "  $1" >> "$OUTPUT_FILE"
+    echo "-------------------------------------------------------" >> "$OUTPUT_FILE"
 }
 
-# Function to generate memory information section
-generate_memory_info() {
-  echo "===== MEMORY INFORMATION ====="
-  echo "---- Memory Usage ----"
-  check_command free && free -h || echo "free command not found"
-  echo ""
-  echo "---- Swap Usage ----"
-  check_command swapon && swapon --show || echo "swapon command not found"
-  echo ""
-  echo "---- Top 10 Memory-Consuming Processes ----"
-  check_command ps && ps aux --sort=-%mem | head -n 11 || echo "ps command not found"
-  echo ""
-}
-
-# Function to generate network information section
-generate_network_info() {
-  echo "===== NETWORK INFORMATION ====="
-  echo "---- IP Configuration ----"
-  check_command ip && ip a || echo "ip command not found"
-  echo ""
-  echo "---- Network Connections ----"
-  check_command netstat && netstat -tuln || check_command ss && ss -tuln || echo "netstat/ss command not found"
-  echo ""
-  echo "---- Listening Ports ----"
-  check_command lsof && lsof -i -P -n | grep LISTEN || echo "lsof command not found"
-  echo ""
-  echo "---- Firewall Status ----"
-  if check_command ufw &> /dev/null; then
-    ufw status
-  elif check_command iptables &> /dev/null; then
-    iptables -L -n
-  else
-    echo "No firewall information available"
-  fi
-  echo ""
-}
-
-# Function to generate user activity information section
-generate_user_info() {
-  echo "===== USER INFORMATION ====="
-  echo "---- Currently Logged In Users ----"
-  check_command who && who || echo "who command not found"
-  echo ""
-  echo "---- Last Logins ----"
-  check_command last && last -n 10 || echo "last command not found"
-  echo ""
-  echo "---- Failed Login Attempts ----"
-  if [ -f /var/log/auth.log ]; then
-    grep "Failed password" /var/log/auth.log | tail -n 10
-  elif [ -f /var/log/secure ]; then
-    grep "Failed password" /var/log/secure | tail -n 10
-  else
-    echo "Auth logs not found or not accessible"
-  fi
-  echo ""
-  echo "---- User Account Information ----"
-  check_command getent && getent passwd | cut -d: -f1,5 | sort || echo "getent command not found"
-  echo ""
-  echo "---- Sudo Users ----"
-  if [ -f /etc/sudoers ]; then
-    grep -v "^#" /etc/sudoers | grep -v "^$" | grep "ALL"
-  fi
-  if [ -d /etc/sudoers.d ]; then
-    grep -v "^#" /etc/sudoers.d/* 2>/dev/null | grep -v "^$" | grep "ALL"
-  fi
-  echo ""
-}
-
-# Function to generate security information section
-generate_security_info() {
-  echo "===== SECURITY INFORMATION ====="
-  echo "---- Password Policy ----"
-  if [ -f /etc/login.defs ]; then
-    grep "^PASS_" /etc/login.defs
-  else
-    echo "Password policy information not available"
-  fi
-  echo ""
-  echo "---- SUID Files ----"
-  check_command find && find / -type f -perm -4000 -ls 2>/dev/null | head -n 10 || echo "find command not found"
-  echo ""
-  echo "---- SSH Configuration ----"
-  if [ -f /etc/ssh/sshd_config ]; then
-    grep -v "^#" /etc/ssh/sshd_config | grep -v "^$" | grep -E "PermitRootLogin|PasswordAuthentication|X11Forwarding"
-  else
-    echo "SSH configuration not found"
-  fi
-  echo ""
-  echo "---- System Updates ----"
-  if check_command apt &> /dev/null; then
-    apt list --upgradable 2>/dev/null | head -n 10
-  elif check_command yum &> /dev/null; then
-    yum check-update --quiet | head -n 10
-  else
-    echo "Package manager not found"
-  fi
-  echo ""
-}
-
-# Generate report
-{
-  echo "===== SYSTEM AUDIT REPORT ====="
-  echo "Generated on: $(date)"
-  echo "Report file: $REPORT_FILE"
-  echo ""
-  
-  # Include sections based on configuration
-  if [ "$INCLUDE_SYSTEM" = true ]; then
-    generate_system_info
-  fi
-  
-  if [ "$INCLUDE_MEMORY" = true ]; then
-    generate_memory_info
-  fi
-  
-  if [ "$INCLUDE_NETWORK" = true ]; then
-    generate_network_info
-  fi
-  
-  if [ "$INCLUDE_USERS" = true ]; then
-    generate_user_info
-  fi
-  
-  if [ "$INCLUDE_SECURITY" = true ]; then
-    generate_security_info
-  fi
-  
-  echo "===== END OF REPORT ====="
-} > "$REPORT_FILE"
-
-echo "Audit complete. Report saved to $REPORT_FILE"
-
-# Optionally send the report via email
-read -p "Would you like to email this report? (y/n): " send_email
-if [[ "$send_email" =~ ^[Yy]$ ]]; then
-  read -p "Enter recipient email: " recipient
-  if [ -n "$recipient" ]; then
-    if [ -f "./send_report.sh" ]; then
-      ./send_report.sh "$recipient" "$REPORT_FILE"
-    else
-      echo "send_report.sh not found. Email functionality unavailable."
-    fi
-  else
-    echo "No recipient specified. Email not sent."
-  fi
+# Generate system information section
+if [[ " ${SECTIONS[*]} " =~ " system " ]]; then
+    add_section_header "SYSTEM INFORMATION"
+    
+    # OS information
+    echo -e "\n-- Operating System --" >> "$OUTPUT_FILE"
+    lsb_release -a 2>/dev/null >> "$OUTPUT_FILE" || cat /etc/os-release >> "$OUTPUT_FILE"
+    
+    # Kernel information
+    echo -e "\n-- Kernel Information --" >> "$OUTPUT_FILE"
+    uname -a >> "$OUTPUT_FILE"
+    
+    # Uptime
+    echo -e "\n-- System Uptime --" >> "$OUTPUT_FILE"
+    uptime >> "$OUTPUT_FILE"
+    
+    # Last boot
+    echo -e "\n-- Last Boot --" >> "$OUTPUT_FILE"
+    who -b >> "$OUTPUT_FILE"
+    
+    # CPU information
+    echo -e "\n-- CPU Information --" >> "$OUTPUT_FILE"
+    lscpu | grep -E 'Model name|Socket|Core|Thread' >> "$OUTPUT_FILE"
+    
+    log_message "Added system information section to report"
 fi
+
+# Generate memory information section
+if [[ " ${SECTIONS[*]} " =~ " memory " ]]; then
+    add_section_header "MEMORY INFORMATION"
+    
+    # Memory usage
+    echo -e "\n-- Memory Usage --" >> "$OUTPUT_FILE"
+    free -h >> "$OUTPUT_FILE"
+    
+    # Swap usage
+    echo -e "\n-- Swap Usage --" >> "$OUTPUT_FILE"
+    swapon --show >> "$OUTPUT_FILE" 2>/dev/null || echo "No swap information available" >> "$OUTPUT_FILE"
+    
+    # Disk usage
+    echo -e "\n-- Disk Usage --" >> "$OUTPUT_FILE"
+    df -h >> "$OUTPUT_FILE"
+    
+    log_message "Added memory information section to report"
+fi
+
+# Generate network information section
+if [[ " ${SECTIONS[*]} " =~ " network " ]]; then
+    add_section_header "NETWORK INFORMATION"
+    
+    # Network interfaces
+    echo -e "\n-- Network Interfaces --" >> "$OUTPUT_FILE"
+    ip a | grep -v "valid_lft" >> "$OUTPUT_FILE"
+    
+    # Routing table
+    echo -e "\n-- Routing Table --" >> "$OUTPUT_FILE"
+    ip route >> "$OUTPUT_FILE"
+    
+    # Open ports
+    echo -e "\n-- Open Ports --" >> "$OUTPUT_FILE"
+    ss -tuln >> "$OUTPUT_FILE"
+    
+    # DNS configuration
+    echo -e "\n-- DNS Configuration --" >> "$OUTPUT_FILE"
+    cat /etc/resolv.conf >> "$OUTPUT_FILE"
+    
+    log_message "Added network information section to report"
+fi
+
+# Generate users information section
+if [[ " ${SECTIONS[*]} " =~ " users " ]]; then
+    add_section_header "USER INFORMATION"
+    
+    # Current users
+    echo -e "\n-- Currently Logged In Users --" >> "$OUTPUT_FILE"
+    who >> "$OUTPUT_FILE"
+    
+    # Last logins
+    echo -e "\n-- Last Logins --" >> "$OUTPUT_FILE"
+    last -n 10 >> "$OUTPUT_FILE"
+    
+    # User accounts
+    echo -e "\n-- User Accounts (UID >= 1000) --" >> "$OUTPUT_FILE"
+    awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd | sort >> "$OUTPUT_FILE"
+    
+    # User groups
+    echo -e "\n-- User Groups --" >> "$OUTPUT_FILE"
+    cat /etc/group | grep -v "^#" | sort >> "$OUTPUT_FILE"
+    
+    log_message "Added user information section to report"
+fi
+
+# Generate security information section
+if [[ " ${SECTIONS[*]} " =~ " security " ]]; then
+    add_section_header "SECURITY INFORMATION"
+    
+    # Failed login attempts
+    echo -e "\n-- Failed Login Attempts --" >> "$OUTPUT_FILE"
+    grep "Failed password" /var/log/auth.log 2>/dev/null | tail -n 10 >> "$OUTPUT_FILE" || echo "No failed login information available" >> "$OUTPUT_FILE"
+    
+    # SSH configuration
+    echo -e "\n-- SSH Configuration --" >> "$OUTPUT_FILE"
+    grep -v "^#" /etc/ssh/sshd_config 2>/dev/null | grep -v "^$" >> "$OUTPUT_FILE" || echo "No SSH configuration available" >> "$OUTPUT_FILE"
+    
+    # Firewall status
+    echo -e "\n-- Firewall Status --" >> "$OUTPUT_FILE"
+    ufw status 2>/dev/null >> "$OUTPUT_FILE" || iptables -L 2>/dev/null >> "$OUTPUT_FILE" || echo "No firewall information available" >> "$OUTPUT_FILE"
+    
+    # SUDO users
+    echo -e "\n-- Sudo Users --" >> "$OUTPUT_FILE"
+    grep -v "^#" /etc/sudoers 2>/dev/null | grep -v "^$" >> "$OUTPUT_FILE" || echo "No sudo information available" >> "$OUTPUT_FILE"
+    
+    log_message "Added security information section to report"
+fi
+
+# Add report footer
+cat >> "$OUTPUT_FILE" << EOF
+
+=======================================================
+           END OF REPORT
+=======================================================
+Generated by: UserCTRL Pro
+Date: $(date +"%Y-%m-%d %H:%M:%S")
+=======================================================
+EOF
+
+# Archive a copy of the report
+cp "$OUTPUT_FILE" "$ARCHIVE_DIR/"
+
+echo "Audit report generated: $OUTPUT_FILE"
+log_message "Audit report generated: $OUTPUT_FILE"
+
+exit 0

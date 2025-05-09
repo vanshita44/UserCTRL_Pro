@@ -1,199 +1,184 @@
 #!/bin/bash
 
-# Default CSV file path
-DEFAULT_CSV_FILE="../data/users.csv"
-CSV_FILE="$DEFAULT_CSV_FILE"
-ERROR_LOG="../logs/error_log.txt"
-USER_LOG="../logs/user_log.txt"
-DRY_RUN=false
+# bulk_add.sh - Script to add multiple users from a CSV file
+# This script is designed to work with the UserCTRL Pro GUI
 
-# Function to display usage information
-show_usage() {
-    echo "Usage: $0 [options]"
-    echo "Options:"
-    echo "  -h, --help              Show this help message"
-    echo "  -f, --file FILE         Specify custom CSV file path"
-    echo "  -d, --dry-run           Perform a dry run (no actual changes)"
-    echo ""
-    echo "CSV Format: username,fullname,password,shell,role"
-    echo "  role should be one of: admin, student, guest"
-}
+# Set up logging
+LOG_DIR="../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/user_management_$(date +%Y%m%d).log"
 
 # Function to log messages
 log_message() {
-    local level="$1"
-    local message="$2"
-    local log_file="$3"
-    
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $message" >> "$log_file"
-    
-    # Also print to console if not in dry run mode or explicitly requested
-    if [ "$4" = "print" ] || [ "$DRY_RUN" = true ]; then
-        echo "[$level] $message"
-    fi
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> "$LOG_FILE"
 }
 
-# Function to execute commands (or just display them in dry run mode)
-execute() {
-    if [ "$DRY_RUN" = true ]; then
-        echo "WOULD EXECUTE: $*"
-        return 0
-    else
-        eval "$@"
-        return $?
-    fi
-}
+log_message "Starting bulk_add.sh script"
 
-# Function to validate CSV format
-validate_csv() {
-    local file="$1"
-    local valid=true
-    
-    # Check if file exists
-    if [[ ! -f "$file" ]]; then
-        log_message "ERROR" "CSV file not found: $file" "$ERROR_LOG" "print"
-        return 1
-    fi
-    
-    # Check header format
-    local header=$(head -n 1 "$file")
-    if [[ ! "$header" =~ ^username,fullname,password,shell(,role)?$ ]]; then
-        log_message "ERROR" "Invalid CSV header format. Expected: username,fullname,password,shell,role" "$ERROR_LOG" "print"
-        valid=false
-    fi
-    
-    # Check for empty file
-    if [[ $(wc -l < "$file") -le 1 ]]; then
-        log_message "ERROR" "CSV file contains only header or is empty" "$ERROR_LOG" "print"
-        valid=false
-    fi
-    
-    if [ "$valid" = false ]; then
-        return 1
-    fi
-    return 0
-}
+# Default values
+CSV_FILE=""
+DRY_RUN=false
 
 # Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -h|--help)
-            show_usage
-            exit 0
+while getopts "f:d" opt; do
+    case $opt in
+        f)
+            CSV_FILE="$OPTARG"
             ;;
-        -f|--file)
-            CSV_FILE="$2"
-            shift 2
-            ;;
-        -d|--dry-run)
+        d)
             DRY_RUN=true
-            shift
             ;;
-        *)
-            echo "Unknown option: $1"
-            show_usage
+        \?)
+            echo "Invalid option: -$OPTARG"
             exit 1
             ;;
     esac
 done
 
-# Clear old logs if not in dry run mode
-if [ "$DRY_RUN" = false ]; then
-    > "$ERROR_LOG"
-    > "$USER_LOG"
-fi
-
-# Validate CSV file
-if ! validate_csv "$CSV_FILE"; then
+# Validate inputs
+if [ -z "$CSV_FILE" ]; then
+    echo "Error: CSV file is required"
+    log_message "Error: CSV file is required"
     exit 1
 fi
 
-echo "Starting bulk user creation process..."
-if [ "$DRY_RUN" = true ]; then
-    echo "DRY RUN MODE: No actual changes will be made"
+if [ ! -f "$CSV_FILE" ]; then
+    echo "Error: CSV file $CSV_FILE does not exist"
+    log_message "Error: CSV file $CSV_FILE does not exist"
+    exit 1
 fi
 
-# Read each user (skip header)
-tail -n +2 "$CSV_FILE" | while IFS=',' read -r username fullname password shell role; do
-    # Validation
-    if [[ -z "$username" ]]; then
-        log_message "ERROR" "Missing username" "$ERROR_LOG" "print"
-        continue
-    fi
+# Initialize counters
+TOTAL=0
+SUCCESS=0
+FAILED=0
+
+# Print header
+if [ "$DRY_RUN" = true ]; then
+    echo "DRY RUN MODE - No changes will be made"
+    log_message "Starting dry run for bulk user addition from $CSV_FILE"
+else
+    echo "LIVE MODE - Users will be created"
+    log_message "Starting bulk user addition from $CSV_FILE"
+fi
+
+echo "----------------------------------------"
+echo "Processing CSV file: $CSV_FILE"
+echo "----------------------------------------"
+
+# Skip the header line and process each line in the CSV file
+tail -n +2 "$CSV_FILE" | while IFS=, read -r username fullname password shell role || [[ -n "$username" ]]; do
+    # Increment total counter
+    ((TOTAL++))
     
-    if [[ -z "$password" ]]; then
-        log_message "ERROR" "Missing password for user: $username" "$ERROR_LOG" "print"
-        continue
-    fi
+    # Trim whitespace
+    username=$(echo "$username" | tr -d '[:space:]')
+    fullname=$(echo "$fullname" | tr -d '[:space:]')
+    password=$(echo "$password" | tr -d '[:space:]')
+    shell=$(echo "$shell" | tr -d '[:space:]')
+    role=$(echo "$role" | tr -d '[:space:]')
     
-    if [[ -z "$shell" ]]; then
-        log_message "WARNING" "Shell not specified for $username, using /bin/bash" "$ERROR_LOG" "print"
+    # Set default shell if not specified
+    if [ -z "$shell" ]; then
         shell="/bin/bash"
     fi
     
-    # Validate shell exists
-    if ! grep -q "^$shell$" /etc/shells 2>/dev/null; then
-        log_message "ERROR" "Invalid shell for $username: $shell" "$ERROR_LOG" "print"
-        continue
+    # Set default role if not specified
+    if [ -z "$role" ]; then
+        role="student"
     fi
     
-    # Check if user exists
+    echo "Processing user: $username"
+    
+    # Check if user already exists
     if id "$username" &>/dev/null; then
-        log_message "SKIP" "User '$username' already exists" "$ERROR_LOG" "print"
+        echo "  - SKIPPED: User $username already exists"
+        log_message "SKIPPED: User $username already exists"
+        ((FAILED++))
         continue
     fi
     
-    # Check password strength
-    if [[ ${#password} -lt 8 ]]; then
-        log_message "ERROR" "Password for $username is too short (min 8 chars)" "$ERROR_LOG" "print"
+    # Validate required fields
+    if [ -z "$username" ] || [ -z "$password" ]; then
+        echo "  - SKIPPED: Username and password are required"
+        log_message "SKIPPED: Username or password missing for entry"
+        ((FAILED++))
         continue
     fi
     
-    # Create user
-    execute "useradd -m -c \"$fullname\" -s \"$shell\" \"$username\""
-    if [[ $? -ne 0 ]]; then
-        log_message "FAIL" "Failed to create user '$username'" "$ERROR_LOG" "print"
+    # If this is a dry run, just print what would happen
+    if [ "$DRY_RUN" = true ]; then
+        echo "  - WOULD CREATE: User $username with role $role"
+        echo "    Full Name: $fullname"
+        echo "    Shell: $shell"
+        ((SUCCESS++))
         continue
     fi
     
-    # Set password with hashing (avoiding plaintext)
-    # Using openssl to generate a hash instead of plaintext
-    if [ "$DRY_RUN" = false ]; then
-        echo "$username:$password" | chpasswd
-    else
-        echo "WOULD SET: Password for $username"
+    # Add the user
+    useradd -m -s "$shell" -c "$fullname" "$username"
+    if [ $? -ne 0 ]; then
+        echo "  - FAILED: Could not create user $username"
+        log_message "FAILED: Could not create user $username"
+        ((FAILED++))
+        continue
     fi
     
-    # Role-based assignment
-    if [[ -n "$role" ]]; then
-        case $role in
-            admin)
-                execute "usermod -aG sudo \"$username\""
-                ;;
-            student)
-                # Create students group if it doesn't exist
-                if ! getent group students >/dev/null; then
-                    execute "groupadd students"
-                fi
-                execute "usermod -aG students \"$username\""
-                ;;
-            guest)
-                # Create guests group if it doesn't exist
-                if ! getent group guests >/dev/null; then
-                    execute "groupadd guests"
-                fi
-                execute "usermod -aG guests \"$username\""
-                ;;
-            *)
-                log_message "WARNING" "Unknown role '$role' for user '$username'. No special groups assigned" "$ERROR_LOG" "print"
-                ;;
-        esac
+    # Set password
+    echo "$username:$password" | chpasswd
+    if [ $? -ne 0 ]; then
+        echo "  - FAILED: Could not set password for user $username"
+        log_message "FAILED: Could not set password for user $username"
+        ((FAILED++))
+        # Clean up by removing the user
+        userdel -r "$username" &>/dev/null
+        continue
     fi
     
-    log_message "OK" "User '$username' created successfully with role '$role'" "$USER_LOG" "print"
+    # Add user to appropriate group based on role
+    case "$role" in
+        "admin")
+            usermod -aG sudo "$username"
+            ;;
+        "student")
+            # Create student group if it doesn't exist
+            if ! getent group student > /dev/null; then
+                groupadd student
+            fi
+            usermod -aG student "$username"
+            ;;
+        "guest")
+            # Create guest group if it doesn't exist
+            if ! getent group guest > /dev/null; then
+                groupadd guest
+            fi
+            usermod -aG guest "$username"
+            ;;
+        *)
+            # Default to regular user with no special group
+            ;;
+    esac
+    
+    # Set up user's home directory with appropriate permissions
+    chmod 750 "/home/$username"
+    
+    echo "  - SUCCESS: User $username created with role $role"
+    log_message "SUCCESS: User $username created with role $role"
+    ((SUCCESS++))
 done
 
-echo "Bulk user creation process completed."
+# Print summary
+echo "----------------------------------------"
+echo "SUMMARY:"
+echo "  Total processed: $TOTAL"
+echo "  Successful: $SUCCESS"
+echo "  Failed: $FAILED"
+echo "----------------------------------------"
+
 if [ "$DRY_RUN" = true ]; then
-    echo "This was a dry run. No actual changes were made."
+    log_message "Dry run completed: $SUCCESS would be created, $FAILED would fail"
+else
+    log_message "Bulk add completed: $SUCCESS users created, $FAILED users failed"
 fi
+
+exit 0

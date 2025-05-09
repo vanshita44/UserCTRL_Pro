@@ -1,266 +1,143 @@
 #!/bin/bash
 
-# Define log file
-LOG_FILE="../logs/user_log.txt"
+# modify_user.sh - Script to modify user properties
+# This script is designed to work with the UserCTRL Pro GUI
 
-# Ensure log directory exists
-mkdir -p $(dirname "$LOG_FILE")
+# Set up logging
+LOG_DIR="../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/user_management_$(date +%Y%m%d).log"
 
 # Function to log messages
 log_message() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> "$LOG_FILE"
 }
 
-# Display usage information
-show_usage() {
-    echo "Usage: $0 [options]"
-    echo "Options:"
-    echo "  -h, --help                 Show this help message"
-    echo "  -u, --username USERNAME    Specify username to modify"
-    echo "  -n, --new-name NEW_NAME    Change username"
-    echo "  -s, --shell SHELL          Change login shell"
-    echo "  -d, --home-dir DIR         Change home directory"
-    echo "  -m, --move-home            Move contents to new home directory"
-    echo "  -g, --group GROUP          Change primary group"
-    echo "  -G, --groups GROUPS        Set supplementary groups (comma-separated)"
-    echo "  -a, --append               Append to supplementary groups instead of replacing"
-}
+log_message "Starting modify_user.sh script"
 
-# Parse command line arguments or use interactive mode
-if [ $# -gt 0 ]; then
-    # Command-line mode
-    USERNAME=""
-    NEW_USERNAME=""
-    SHELL=""
-    HOME_DIR=""
-    MOVE_HOME=false
-    PRIMARY_GROUP=""
-    GROUPS=""
-    APPEND=false
+# Default values
+USERNAME=""
+NEW_USERNAME=""
+NEW_SHELL=""
+NEW_HOME=""
+MOVE_HOME=false
+GROUPS=""
+ADD_GROUPS=false
 
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_usage
-                exit 0
-                ;;
-            -u|--username)
-                USERNAME="$2"
-                shift 2
-                ;;
-            -n|--new-name)
-                NEW_USERNAME="$2"
-                shift 2
-                ;;
-            -s|--shell)
-                SHELL="$2"
-                shift 2
-                ;;
-            -d|--home-dir)
-                HOME_DIR="$2"
-                shift 2
-                ;;
-            -m|--move-home)
-                MOVE_HOME=true
-                shift
-                ;;
-            -g|--group)
-                PRIMARY_GROUP="$2"
-                shift 2
-                ;;
-            -G|--groups)
-                GROUPS="$2"
-                shift 2
-                ;;
-            -a|--append)
-                APPEND=true
-                shift
-                ;;
-            *)
-                echo "Unknown option: $1"
-                show_usage
-                exit 1
-                ;;
-        esac
-    done
-else
-    # Interactive mode
-    read -p "Enter username to modify: " USERNAME
-fi
+# Parse command line arguments
+while getopts "u:n:s:d:maG:" opt; do
+    case $opt in
+        u)
+            USERNAME="$OPTARG"
+            ;;
+        n)
+            NEW_USERNAME="$OPTARG"
+            ;;
+        s)
+            NEW_SHELL="$OPTARG"
+            ;;
+        d)
+            NEW_HOME="$OPTARG"
+            ;;
+        m)
+            MOVE_HOME=true
+            ;;
+        a)
+            ADD_GROUPS=true
+            ;;
+        G)
+            GROUPS="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG"
+            exit 1
+            ;;
+    esac
+done
 
-# Check if username is empty
+# Validate inputs
 if [ -z "$USERNAME" ]; then
-    echo "Username is required!"
-    log_message "ERROR: Empty username provided for modification"
+    echo "Error: Username is required"
+    log_message "Error: Username is required"
     exit 1
 fi
 
 # Check if user exists
 if ! id "$USERNAME" &>/dev/null; then
-    echo "User does not exist!"
-    log_message "ERROR: Attempted to modify non-existent user: $USERNAME"
+    echo "Error: User $USERNAME does not exist"
+    log_message "Error: User $USERNAME does not exist"
     exit 1
 fi
 
-# If in interactive mode, prompt for modifications
-if [ $# -eq 0 ]; then
-    echo "Select modification to perform:"
-    echo "1) Change username"
-    echo "2) Change shell"
-    echo "3) Change home directory"
-    echo "4) Change primary group"
-    echo "5) Add to groups"
-    echo "6) Remove from groups"
-    read -p "Enter option (1-6): " OPTION
-
-    case $OPTION in
-        1)
-            read -p "Enter new username: " NEW_USERNAME
-            ;;
-        2)
-            read -p "Enter new shell (e.g., /bin/bash): " SHELL
-            ;;
-        3)
-            read -p "Enter new home directory: " HOME_DIR
-            read -p "Move contents to new home directory? (y/N): " MOVE_CHOICE
-            if [[ "$MOVE_CHOICE" =~ ^[Yy]$ ]]; then
-                MOVE_HOME=true
-            fi
-            ;;
-        4)
-            read -p "Enter new primary group: " PRIMARY_GROUP
-            ;;
-        5)
-            read -p "Enter groups to add (comma-separated): " GROUPS
-            APPEND=true
-            ;;
-        6)
-            read -p "Enter groups to remove (comma-separated): " GROUPS
-            # We'll handle removal differently
-            ;;
-        *)
-            echo "Invalid option!"
-            exit 1
-            ;;
-    esac
+# Check if any modifications are specified
+if [ -z "$NEW_USERNAME" ] && [ -z "$NEW_SHELL" ] && [ -z "$NEW_HOME" ] && [ -z "$GROUPS" ]; then
+    echo "Error: No modifications specified"
+    log_message "Error: No modifications specified for user $USERNAME"
+    exit 1
 fi
 
-# Prepare usermod command
-USERMOD_CMD="sudo usermod"
+# Build usermod command
+USERMOD_CMD="usermod"
 CHANGES_MADE=false
-CHANGES_DESC=""
 
-# Change username if specified
+# Add new username if specified
 if [ -n "$NEW_USERNAME" ]; then
     USERMOD_CMD="$USERMOD_CMD -l $NEW_USERNAME"
     CHANGES_MADE=true
-    CHANGES_DESC="$CHANGES_DESC username changed to $NEW_USERNAME;"
+    log_message "Changing username from $USERNAME to $NEW_USERNAME"
 fi
 
-# Change shell if specified
-if [ -n "$SHELL" ]; then
-    # Validate shell exists in /etc/shells
-    if grep -q "^$SHELL$" /etc/shells 2>/dev/null; then
-        USERMOD_CMD="$USERMOD_CMD -s $SHELL"
-        CHANGES_MADE=true
-        CHANGES_DESC="$CHANGES_DESC shell changed to $SHELL;"
-    else
-        echo "Error: Shell $SHELL is not valid. Check /etc/shells for valid shells."
-        log_message "ERROR: Invalid shell specified for $USERNAME: $SHELL"
-        exit 1
-    fi
+# Add new shell if specified
+if [ -n "$NEW_SHELL" ]; then
+    USERMOD_CMD="$USERMOD_CMD -s $NEW_SHELL"
+    CHANGES_MADE=true
+    log_message "Changing shell for user $USERNAME to $NEW_SHELL"
 fi
 
-# Change home directory if specified
-if [ -n "$HOME_DIR" ]; then
+# Add new home directory if specified
+if [ -n "$NEW_HOME" ]; then
     if [ "$MOVE_HOME" = true ]; then
-        USERMOD_CMD="$USERMOD_CMD -d $HOME_DIR -m"
-        CHANGES_MADE=true
-        CHANGES_DESC="$CHANGES_DESC home directory moved to $HOME_DIR;"
+        USERMOD_CMD="$USERMOD_CMD -d $NEW_HOME -m"
+        log_message "Moving home directory for user $USERNAME to $NEW_HOME"
     else
-        USERMOD_CMD="$USERMOD_CMD -d $HOME_DIR"
-        CHANGES_MADE=true
-        CHANGES_DESC="$CHANGES_DESC home directory changed to $HOME_DIR (without moving contents);"
+        USERMOD_CMD="$USERMOD_CMD -d $NEW_HOME"
+        log_message "Setting home directory for user $USERNAME to $NEW_HOME (not moving contents)"
     fi
+    CHANGES_MADE=true
 fi
 
-# Change primary group if specified
-if [ -n "$PRIMARY_GROUP" ]; then
-    # Check if group exists
-    if getent group "$PRIMARY_GROUP" >/dev/null; then
-        USERMOD_CMD="$USERMOD_CMD -g $PRIMARY_GROUP"
-        CHANGES_MADE=true
-        CHANGES_DESC="$CHANGES_DESC primary group changed to $PRIMARY_GROUP;"
-    else
-        echo "Error: Group $PRIMARY_GROUP does not exist."
-        log_message "ERROR: Non-existent group specified for $USERNAME: $PRIMARY_GROUP"
-        exit 1
-    fi
-fi
-
-# Handle supplementary groups
+# Add groups if specified
 if [ -n "$GROUPS" ]; then
-    # For group removal (option 6 in interactive mode)
-    if [ "$OPTION" = "6" ]; then
-        CURRENT_GROUPS=$(id -Gn "$USERNAME" | tr ' ' ',')
-        IFS=',' read -ra REMOVE_GROUPS <<< "$GROUPS"
-        IFS=',' read -ra CURRENT_GROUP_ARRAY <<< "$CURRENT_GROUPS"
-        
-        NEW_GROUPS=()
-        for group in "${CURRENT_GROUP_ARRAY[@]}"; do
-            KEEP=true
-            for remove_group in "${REMOVE_GROUPS[@]}"; do
-                if [ "$group" = "$remove_group" ]; then
-                    KEEP=false
-                    break
-                fi
-            done
-            if [ "$KEEP" = true ]; then
-                NEW_GROUPS+=("$group")
-            fi
-        done
-        
-        if [ ${#NEW_GROUPS[@]} -gt 0 ]; then
-            GROUPS=$(IFS=,; echo "${NEW_GROUPS[*]}")
-            USERMOD_CMD="$USERMOD_CMD -G $GROUPS"
-            CHANGES_MADE=true
-            CHANGES_DESC="$CHANGES_DESC removed from groups: $GROUPS;"
-        else
-            echo "Error: Cannot remove all groups. User must belong to at least one group."
-            log_message "ERROR: Attempted to remove all groups from $USERNAME"
-            exit 1
-        fi
+    if [ "$ADD_GROUPS" = true ]; then
+        USERMOD_CMD="$USERMOD_CMD -a -G $GROUPS"
+        log_message "Adding user $USERNAME to groups: $GROUPS"
     else
-        # For adding groups
-        if [ "$APPEND" = true ]; then
-            USERMOD_CMD="$USERMOD_CMD -a -G $GROUPS"
-            CHANGES_MADE=true
-            CHANGES_DESC="$CHANGES_DESC added to groups: $GROUPS;"
-        else
-            USERMOD_CMD="$USERMOD_CMD -G $GROUPS"
-            CHANGES_MADE=true
-            CHANGES_DESC="$CHANGES_DESC supplementary groups set to: $GROUPS;"
-        fi
+        USERMOD_CMD="$USERMOD_CMD -G $GROUPS"
+        log_message "Setting groups for user $USERNAME to: $GROUPS"
     fi
+    CHANGES_MADE=true
 fi
 
-# Execute the command if changes were specified
+# Execute the usermod command if changes were made
 if [ "$CHANGES_MADE" = true ]; then
     $USERMOD_CMD "$USERNAME"
-    
-    if [ $? -eq 0 ]; then
-        echo "User $USERNAME modified successfully."
-        log_message "SUCCESS: Modified user $USERNAME: $CHANGES_DESC"
-        
-        # Show updated user information
-        echo "Updated user information:"
-        id "$USERNAME"
-    else
-        echo "Failed to modify user $USERNAME."
-        log_message "ERROR: Failed to modify user $USERNAME: $CHANGES_DESC"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to modify user $USERNAME"
+        log_message "Error: Failed to modify user $USERNAME"
         exit 1
     fi
+    
+    # If username was changed, update the log to reflect the new username
+    if [ -n "$NEW_USERNAME" ]; then
+        log_message "User $USERNAME successfully modified (now $NEW_USERNAME)"
+        echo "User $USERNAME successfully modified (now $NEW_USERNAME)"
+    else
+        log_message "User $USERNAME successfully modified"
+        echo "User $USERNAME successfully modified"
+    fi
 else
-    echo "No changes specified for user $USERNAME."
-    log_message "INFO: No changes specified for user $USERNAME"
+    echo "No changes made to user $USERNAME"
+    log_message "No changes made to user $USERNAME"
 fi
+
+exit 0

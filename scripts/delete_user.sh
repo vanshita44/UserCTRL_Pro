@@ -1,99 +1,60 @@
 #!/bin/bash
 
-# Define log file
-LOG_FILE="../logs/user_log.txt"
+# delete_user.sh - Script to delete a user from the system
+# This script is designed to work with the UserCTRL Pro GUI
 
-# Ensure log directory exists
-mkdir -p $(dirname "$LOG_FILE")
+# Set up logging
+LOG_DIR="../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/user_management_$(date +%Y%m%d).log"
 
 # Function to log messages
 log_message() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" >> "$LOG_FILE"
 }
 
-# Function to backup home directory
-backup_home_dir() {
-    local username="$1"
-    local backup_dir="../backups/users"
-    
-    # Create backup directory if it doesn't exist
-    mkdir -p "$backup_dir"
-    
-    # Get user's home directory
-    local home_dir=$(eval echo ~$username)
-    
-    if [ -d "$home_dir" ]; then
-        local backup_file="$backup_dir/${username}-home-$(date +%Y%m%d-%H%M%S).tar.gz"
-        tar -czf "$backup_file" "$home_dir" 2>/dev/null
-        
-        if [ $? -eq 0 ]; then
-            echo "Home directory backed up to $backup_file"
-            log_message "INFO: Home directory for $username backed up to $backup_file"
-            return 0
-        else
-            echo "Failed to backup home directory for $username"
-            log_message "ERROR: Failed to backup home directory for $username"
-            return 1
-        fi
-    else
-        echo "Home directory for $username not found or not accessible"
-        log_message "WARNING: Home directory for $username not found during backup attempt"
-        return 1
-    fi
-}
+log_message "Starting delete_user.sh script"
 
-# Prompt for username
-read -p "Enter username to delete: " username
+# Read input from stdin
+read -r username
+read -r confirm
+read -r keep_home
 
-# Check if username is empty
+# Validate inputs
 if [ -z "$username" ]; then
-    echo "Username is required!"
-    log_message "ERROR: Empty username provided for deletion"
+    echo "Error: Username is required"
+    log_message "Error: Username is required"
     exit 1
+fi
+
+if [ "$confirm" != "y" ]; then
+    echo "Operation cancelled by user"
+    log_message "User deletion cancelled for $username"
+    exit 0
 fi
 
 # Check if user exists
 if ! id "$username" &>/dev/null; then
-    echo "User does not exist!"
-    log_message "ERROR: Attempted to delete non-existent user: $username"
+    echo "Error: User $username does not exist"
+    log_message "Error: User $username does not exist"
     exit 1
 fi
-
-# Ask for confirmation
-read -p "Are you sure you want to delete user '$username'? (y/N): " confirm
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "User deletion cancelled."
-    log_message "INFO: Deletion of user $username cancelled by administrator"
-    exit 0
-fi
-
-# Ask about home directory
-read -p "Do you want to keep the home directory? (y/N): " keep_home
-if [[ "$keep_home" =~ ^[Yy]$ ]]; then
-    remove_flag=""
-    log_message "INFO: Home directory preservation requested for $username"
-else
-    remove_flag="-r"
-    log_message "INFO: Home directory removal requested for $username"
-fi
-
-# Backup home directory before deletion
-echo "Backing up home directory..."
-backup_home_dir "$username"
 
 # Delete the user
-if [ -z "$remove_flag" ]; then
-    sudo userdel "$username"
+if [ "$keep_home" = "y" ]; then
+    userdel "$username"
+    log_message "Deleted user $username (keeping home directory)"
+    echo "User $username successfully deleted (home directory preserved)"
 else
-    sudo userdel $remove_flag "$username"
+    userdel -r "$username"
+    log_message "Deleted user $username (including home directory)"
+    echo "User $username successfully deleted (including home directory)"
 fi
 
-# Check if deletion was successful
-if [ $? -eq 0 ]; then
-    echo "User $username deleted successfully."
-    log_message "SUCCESS: User $username deleted successfully (keep_home=$keep_home)"
-else
-    echo "Failed to delete user $username."
-    log_message "ERROR: Failed to delete user $username"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to delete user $username"
+    log_message "Error: Failed to delete user $username"
     exit 1
 fi
+
+exit 0
