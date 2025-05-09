@@ -1,175 +1,175 @@
-# UserCTRL Pro - Advanced Linux User Management System
-
-## Description
-
-**UserCTRL Pro** is a comprehensive Linux user management system that allows administrators to efficiently manage user accounts through both a command-line interface and a graphical user interface built with Tkinter. The system enables operations such as creating users, deleting users, modifying user details, locking accounts, and assigning specific roles (admin, student, guest) with appropriate permissions.
-
-This repository contains all the shell scripts necessary for performing user management tasks, role templates for permission assignment, and a Python-based GUI for easier interaction.
-
-Additionally, **UserCTRL Pro** includes robust system audit features for generating comprehensive audit reports, emailing those reports to administrators, and archiving them for future reference.
+Great to hear everything is working now! Here's an improved and more professional version of your `README.md` for **UserCTRL Pro**. I've enhanced the structure, improved grammar, and added formatting for clarity and readability.
 
 ---
 
-## Table of Contents
 
-* [Project Setup](#project-setup)
-* [Features](#features)
-* [Scripts Overview](#scripts-overview)
-* [GUI Interface](#gui-interface)
-* [How to Use](#how-to-use)
-* [Dependencies](#dependencies)
-* [Contributors](#contributors)
+# 🛡️ UserCTRL Pro - Advanced Linux User Management System
+
+**UserCTRL Pro** is a comprehensive Linux-based user management system that empowers system administrators with both a graphical and command-line interface to manage user accounts effectively. With intuitive operations such as creating, modifying, deleting, and locking accounts, this tool also incorporates role-based access control and audit reporting features to ensure secure and efficient system administration.
 
 ---
 
-## Project Setup
+## 📁 Table of Contents
 
-To get started with **UserCTRL Pro**, follow these steps:
+- [🚀 Features](#-features)
+- [⚙️ Project Setup](#️-project-setup)
+- [🧩 Scripts Overview](#-scripts-overview)
+- [🖥️ GUI Interface](#️-gui-interface)
+- [📌 How to Use](#-how-to-use)
+- [📦 Dependencies](#-dependencies)
+- [👨‍💻 Contributors](#-contributors)
+
+---
+
+## 🚀 Features
+
+### 🔐 User Management
+- Add users with role-based access control
+- Delete users with optional home directory backup
+- Lock/unlock accounts with reason tracking
+- Modify user attributes (username, shell, home directory, groups)
+- Bulk user creation using CSV files
+
+### 🧑‍💼 Role-Based Access Control
+- **Admin**: Full system privileges including sudo access
+- **Student**: Limited privileges within the `students` group
+- **Guest**: Minimal access via the `guests` group
+
+### 📋 System Auditing
+- Generate detailed system audit reports
+- Track user activity and system changes
+- Include customizable sections in the reports
+- Check for security anomalies
+
+### ⚙️ Automation
+- Automatically send audit reports via email
+- Archive reports with date-based structure
+- Log every operation with timestamps
+
+### 🖥️ GUI (Graphical User Interface)
+- Built using **Tkinter**
+- Tabbed layout for easy navigation
+- Input validation and user-friendly forms
+- Backend powered by robust shell scripts
+
+---
+
+## ⚙️ Project Setup
+
+Follow these steps to get started with UserCTRL Pro:
 
 1. **Clone the Repository**:
-   ```
+   ```bash
    git clone https://github.com/vanshita44/UserCTRL_Pro.git
-   ```
+````
 
 2. **Navigate to the Project Directory**:
-   ```
+
+   ```bash
    cd UserCTRL_Pro
    ```
 
-3. **Set Permissions**:
-   ```
-   chmod +x *.sh
+3. **Set Executable Permissions for Scripts**:
+
+   ```bash
+   chmod +x scripts/*.sh
    ```
 
-4. **Install Dependencies**:
-   ```
+4. **Install Required Packages**:
+
+   ```bash
    sudo apt update
    sudo apt install mailutils python3-tk
    ```
 
 5. **Launch the Application**:
-   ```
-   # For GUI interface
-   python3 gui/main_gui.py
-   
-   # For command-line interface
-   bash ./scripts/script_name.sh
-   ```
+
+   * **For GUI**:
+
+     ```bash
+     sudo python3 gui/main_gui.py
+     ```
+   * **For CLI**:
+
+     ```bash
+     bash scripts/script_name.sh
+     ```
 
 ---
 
-## Features
+## 🧩 Scripts Overview
 
-* **User Management**:
-  * Add users with role-based permissions
-  * Delete users with home directory backup option
-  * Lock/unlock user accounts with expiration options
-  * Modify user details (username, shell, home directory, groups)
-  * Bulk user creation from CSV files
+### 🔧 User Management
 
-* **Role-Based Access Control**:
-  * Admin: Full system privileges (sudo access)
-  * Student: Limited privileges (students group)
-  * Guest: Minimal privileges (guests group)
+* `add_user.sh` – Add a user with password and role setup
+* `delete_user.sh` – Delete a user and optionally back up their home directory
+* `modify_user.sh` – Modify user attributes
+* `lock_user.sh` – Lock or unlock user accounts
+* `bulk_add.sh` – Bulk user creation from a CSV file
 
-* **System Auditing**:
-  * Generate comprehensive system reports
-  * Customizable report sections
-  * User activity monitoring
-  * Security checks
+### 📝 Auditing & Reporting
 
-* **Automation**:
-  * Email reports to administrators
-  * Archive reports with organized date structure
-  * Logging of all operations
-
-* **Graphical User Interface**:
-  * Tkinter-based GUI for easier interaction
-  * Tabbed interface for different operations
-  * Form validation and error handling
+* `generate_audit.sh` – Generate system audit logs
+* `send_report.sh` – Email and archive audit reports
 
 ---
 
-## Scripts Overview
+## 🖥️ GUI Interface
 
-### User Management Scripts
-
-* **add_user.sh**: Creates users with password security and role assignment
-* **delete_user.sh**: Removes users with home directory backup
-* **lock_user.sh**: Locks/unlocks accounts with reason tracking
-* **modify_user.sh**: Comprehensive user modification options
-* **bulk_add.sh**: Processes CSV files for bulk user creation
-
-### Audit and Reporting Scripts
-
-* **generate_audit.sh**: Creates detailed system audit reports
-* **send_report.sh**: Emails reports and archives them
----
-
-## GUI Interface
-
-The Tkinter-based GUI provides an intuitive interface for all operations:
+The GUI provides an intuitive interface, featuring:
 
 * **User Management Tab**: Add, delete, lock/unlock, and modify users
-* **Audit & Reports Tab**: Generate and send audit reports
-* **Bulk Operations Tab**: Upload CSV files for bulk user creation
+* **Audit & Reports Tab**: Generate and email reports
+* **Bulk Operations Tab**: Upload CSV files for mass user creation
 
-The GUI internally calls the bash scripts to perform the actual system operations, providing a user-friendly front-end while maintaining the robust back-end functionality.
+Each GUI operation internally executes its respective shell script.
 
 ---
 
-## How to Use
+## 📌 How to Use
 
-### Command Line Interface
+### 🖥️ Command-Line Interface
 
-Run individual scripts directly:
+Execute scripts directly:
 
-```
-# Add a user
+```bash
 bash scripts/add_user.sh
-
-# Delete a user
 bash scripts/delete_user.sh
-
-# Lock a user account
 bash scripts/lock_user.sh
-
-# Modify a user
 bash scripts/modify_user.sh
-
-# Generate audit report
 bash scripts/generate_audit.sh
-
-# Send report via email
-bash scripts/send_report.sh recipient@example.com report_file.txt
+bash scripts/send_report.sh recipient@example.com report.txt
 ```
 
-### Graphical Interface
+### 🖱️ Graphical Interface
 
-Launch the GUI application:
+Launch the GUI:
 
+```bash
+sudo python3 gui/main_gui.py
 ```
-python3 gui/main_gui.py
-```
 
-Then use the intuitive interface to perform all operations.
+Navigate through tabs to manage users or generate reports.
 
 ---
 
-## Dependencies
+## 📦 Dependencies
 
-* **Bash**: Core scripting language
-* **Python 3**: For the GUI interface
-* **Tkinter**: Python library for GUI development
-* **mailutils**: For email functionality
-* **System commands**: useradd, usermod, userdel, passwd, etc.
+* **Bash** – For scripting core logic
+* **Python 3** – GUI backend
+* **Tkinter** – Python library for GUI
+* **mailutils** – For sending email reports
+* **System tools** – `useradd`, `usermod`, `userdel`, `passwd`, etc.
 
 ---
 
-## Contributors
+## 👨‍💻 Contributors
 
-* **Armaannpreet**: GUI Integration & Final Integration
-* **Vanshita Sharma**: Core Bash Logic, Role Templates, User Operations
-* **Shreya**: CSV Handling & Bulk Operations
-* **Arshdeep**: Audit Reports & Email Automation
-```
+| Name                | Role                                   |
+| ------------------- | -------------------------------------- |
+| **Armaanpreet**     | GUI Development & Final Integration    |
+| **Vanshita Sharma** | Core Shell Scripts & Role Architecture |
+| **Shreya**          | Bulk CSV User Handling                 |
+| **Arshdeep**        | Audit Logging & Email Automation       |
+
+---
