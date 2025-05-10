@@ -57,20 +57,36 @@ if [ -z "$REPORT_FILE" ] || [ ! -f "$REPORT_FILE" ]; then
     exit 1
 fi
 
-# Check if mail command is available
-if ! command -v mail &> /dev/null; then
-    echo "Error: 'mail' command not found. Please install mailutils package."
-    log_message "Error: 'mail' command not found"
-    exit 1
+# Check if mutt command is available, if not try to install it
+if ! command -v mutt &> /dev/null; then
+    echo "Warning: 'mutt' command not found. Attempting to install..."
+    log_message "Warning: 'mutt' command not found. Attempting to install..."
+    
+    # Try to detect the package manager and install mutt
+    if command -v apt &> /dev/null; then
+        sudo apt update && sudo apt install -y mutt
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y mutt
+    elif command -v dnf &> /dev/null; then
+        sudo dnf install -y mutt
+    else
+        echo "Error: Could not install mutt. Please install it manually."
+        log_message "Error: Could not install mutt automatically"
+        
+        # Fall back to mail command if available
+        if command -v mail &> /dev/null; then
+            echo "Falling back to 'mail' command..."
+            log_message "Falling back to 'mail' command"
+        else
+            echo "Error: Neither 'mutt' nor 'mail' commands are available."
+            log_message "Error: Neither 'mutt' nor 'mail' commands are available"
+            exit 1
+        fi
+    fi
 fi
-
-# Send the email
-echo "Sending report to $EMAIL..."
-log_message "Sending report $REPORT_FILE to $EMAIL"
 
 # Create a temporary email body file
 TEMP_EMAIL_BODY=$(mktemp)
-
 cat > "$TEMP_EMAIL_BODY" << EOF
 Hello,
 
@@ -82,21 +98,37 @@ Regards,
 System Administrator
 EOF
 
-# Send the email
-mail -s "$SUBJECT" -a "$REPORT_FILE" "$EMAIL" < "$TEMP_EMAIL_BODY"
+# Send the email using mutt if available, otherwise fall back to mail
+echo "Sending report to $EMAIL..."
+log_message "Sending report $REPORT_FILE to $EMAIL"
+
+if command -v mutt &> /dev/null; then
+    # Send using mutt
+    mutt -s "$SUBJECT" -a "$REPORT_FILE" -- "$EMAIL" < "$TEMP_EMAIL_BODY"
+    SEND_STATUS=$?
+else
+    # Fall back to mail
+    mail -s "$SUBJECT" -a "$REPORT_FILE" "$EMAIL" < "$TEMP_EMAIL_BODY"
+    SEND_STATUS=$?
+fi
 
 # Check if email was sent successfully
-if [ $? -eq 0 ]; then
+if [ $SEND_STATUS -eq 0 ]; then
     echo "SUCCESS: Report sent to $EMAIL"
     log_message "SUCCESS: Report $REPORT_FILE sent to $EMAIL"
 else
     echo "ERROR: Failed to send report to $EMAIL"
     log_message "ERROR: Failed to send report $REPORT_FILE to $EMAIL"
+    
+    # Additional error information
+    echo "Note: Email sending requires proper mail server configuration."
+    echo "Please ensure that either 'mutt' or 'mail' is properly configured with an SMTP server."
+    echo "For Gmail or other external providers, you may need to configure authentication."
+    
     rm "$TEMP_EMAIL_BODY"
     exit 1
 fi
 
 # Clean up
 rm "$TEMP_EMAIL_BODY"
-
 exit 0

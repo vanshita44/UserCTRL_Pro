@@ -23,9 +23,10 @@ NEW_HOME=""
 MOVE_HOME=false
 GROUPS=""
 ADD_GROUPS=false
+NEW_ROLE=""
 
 # Parse command line arguments
-while getopts "u:n:s:d:maG:" opt; do
+while getopts "u:n:s:d:maG:r:" opt; do
     case $opt in
         u)
             USERNAME="$OPTARG"
@@ -47,6 +48,9 @@ while getopts "u:n:s:d:maG:" opt; do
             ;;
         G)
             GROUPS="$OPTARG"
+            ;;
+        r)
+            NEW_ROLE="$OPTARG"
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -70,7 +74,7 @@ if ! id "$USERNAME" &>/dev/null; then
 fi
 
 # Check if any modifications are specified
-if [ -z "$NEW_USERNAME" ] && [ -z "$NEW_SHELL" ] && [ -z "$NEW_HOME" ] && [ -z "$GROUPS" ]; then
+if [ -z "$NEW_USERNAME" ] && [ -z "$NEW_SHELL" ] && [ -z "$NEW_HOME" ] && [ -z "$GROUPS" ] && [ -z "$NEW_ROLE" ]; then
     echo "Error: No modifications specified"
     log_message "Error: No modifications specified for user $USERNAME"
     exit 1
@@ -126,18 +130,57 @@ if [ "$CHANGES_MADE" = true ]; then
         log_message "Error: Failed to modify user $USERNAME"
         exit 1
     fi
+fi
+
+# Handle role change if specified
+if [ -n "$NEW_ROLE" ]; then
+    # Remove user from existing role groups
+    for role_group in admin sudo student guest; do
+        gpasswd -d "$USERNAME" "$role_group" 2>/dev/null
+    done
     
-    # If username was changed, update the log to reflect the new username
-    if [ -n "$NEW_USERNAME" ]; then
-        log_message "User $USERNAME successfully modified (now $NEW_USERNAME)"
-        echo "User $USERNAME successfully modified (now $NEW_USERNAME)"
-    else
-        log_message "User $USERNAME successfully modified"
-        echo "User $USERNAME successfully modified"
-    fi
+    # Add user to new role group
+    case "$NEW_ROLE" in
+        "admin")
+            # Create admin group if it doesn't exist
+            if ! getent group admin > /dev/null; then
+                groupadd admin
+            fi
+            usermod -aG sudo,admin "$USERNAME"
+            log_message "Changed role for user $USERNAME to admin"
+            ;;
+        "student")
+            # Create student group if it doesn't exist
+            if ! getent group student > /dev/null; then
+                groupadd student
+            fi
+            usermod -aG student "$USERNAME"
+            log_message "Changed role for user $USERNAME to student"
+            ;;
+        "guest")
+            # Create guest group if it doesn't exist
+            if ! getent group guest > /dev/null; then
+                groupadd guest
+            fi
+            usermod -aG guest "$USERNAME"
+            log_message "Changed role for user $USERNAME to guest"
+            ;;
+        *)
+            echo "Error: Invalid role $NEW_ROLE"
+            log_message "Error: Invalid role $NEW_ROLE for user $USERNAME"
+            ;;
+    esac
+    
+    CHANGES_MADE=true
+fi
+
+# If username was changed, update the log to reflect the new username
+if [ -n "$NEW_USERNAME" ]; then
+    log_message "User $USERNAME successfully modified (now $NEW_USERNAME)"
+    echo "User $USERNAME successfully modified (now $NEW_USERNAME)"
 else
-    echo "No changes made to user $USERNAME"
-    log_message "No changes made to user $USERNAME"
+    log_message "User $USERNAME successfully modified"
+    echo "User $USERNAME successfully modified"
 fi
 
 exit 0
